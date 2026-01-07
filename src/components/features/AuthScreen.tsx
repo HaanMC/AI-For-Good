@@ -1,45 +1,23 @@
 /**
  * Auth Screen Component
- * Màn hình xác thực chính - Login trước, Signup bên dưới
+ * Màn hình xác thực - Login trước, Signup bên dưới
+ * Người dùng chỉ cần username/password
  */
 
 import React, { useState } from 'react';
-import { BookOpen, Sparkles, Key, AlertCircle, Info } from 'lucide-react';
+import { BookOpen, Sparkles } from 'lucide-react';
 import { useAuthContext } from '../../contexts';
 import LoginForm from './LoginForm';
 import SignupForm from './SignupForm';
-import Button from '../ui/Button';
-import Input from '../ui/Input';
 
-type AuthView = 'login' | 'signup' | 'setup';
+type AuthView = 'login' | 'signup';
 
 const AuthScreen: React.FC = () => {
-  const { isConfigured, isLoading, configureToken, error } = useAuthContext();
+  const { isLoading } = useAuthContext();
   const [currentView, setCurrentView] = useState<AuthView>('login');
-  const [token, setToken] = useState('');
-  const [tokenError, setTokenError] = useState<string | null>(null);
-  const [isSettingUp, setIsSettingUp] = useState(false);
-
-  // Handle token setup
-  const handleSetupToken = async () => {
-    if (!token.trim()) {
-      setTokenError('Vui lòng nhập GitHub Token');
-      return;
-    }
-
-    setIsSettingUp(true);
-    setTokenError(null);
-
-    const success = await configureToken(token.trim());
-    if (!success) {
-      setTokenError(error || 'Token không hợp lệ');
-    }
-
-    setIsSettingUp(false);
-  };
 
   // Show loading spinner during initial load
-  if (isLoading && !isSettingUp) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-900 dark:to-stone-800 flex items-center justify-center">
         <div className="text-center">
@@ -49,9 +27,6 @@ const AuthScreen: React.FC = () => {
       </div>
     );
   }
-
-  // If not configured, show simple token setup
-  const needsSetup = !isConfigured;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-stone-100 via-amber-50 to-stone-100 dark:from-stone-900 dark:via-stone-800 dark:to-stone-900 flex flex-col">
@@ -77,62 +52,7 @@ const AuthScreen: React.FC = () => {
       <main className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           <div className="bg-white dark:bg-stone-800 rounded-3xl shadow-2xl shadow-stone-900/10 dark:shadow-black/30 p-8 border border-stone-200 dark:border-stone-700">
-            {needsSetup ? (
-              // Simple token setup
-              <div className="space-y-6">
-                <div className="text-center mb-6">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-accent/10 text-accent mb-4">
-                    <Key className="w-8 h-8" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-stone-900 dark:text-stone-100">
-                    Thiết lập lần đầu
-                  </h2>
-                  <p className="text-stone-500 dark:text-stone-400 mt-2">
-                    Nhập GitHub Token để bắt đầu sử dụng
-                  </p>
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                  <div className="flex gap-3">
-                    <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-blue-700 dark:text-blue-300">
-                      <p className="font-semibold mb-1">Hướng dẫn lấy Token:</p>
-                      <ol className="list-decimal list-inside space-y-1 text-blue-600 dark:text-blue-400">
-                        <li>Vào GitHub → Settings → Developer settings</li>
-                        <li>Chọn Personal access tokens → Tokens (classic)</li>
-                        <li>Generate new token với quyền <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">repo</code></li>
-                      </ol>
-                    </div>
-                  </div>
-                </div>
-
-                {tokenError && (
-                  <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-600 dark:text-red-400">
-                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm">{tokenError}</span>
-                  </div>
-                )}
-
-                <Input
-                  label="GitHub Token"
-                  type="password"
-                  placeholder="ghp_xxxxxxxxxxxx"
-                  value={token}
-                  onChange={(e) => setToken(e.target.value)}
-                  leftIcon={<Key className="w-5 h-5" />}
-                  disabled={isSettingUp}
-                />
-
-                <Button
-                  onClick={handleSetupToken}
-                  fullWidth
-                  size="lg"
-                  isLoading={isSettingUp}
-                >
-                  Xác nhận
-                </Button>
-              </div>
-            ) : currentView === 'login' ? (
+            {currentView === 'login' ? (
               <LoginForm onSwitchToSignup={() => setCurrentView('signup')} />
             ) : (
               <SignupForm onSwitchToLogin={() => setCurrentView('login')} />
@@ -142,7 +62,7 @@ const AuthScreen: React.FC = () => {
           {/* Footer info */}
           <div className="mt-6 text-center">
             <p className="text-xs text-stone-400 dark:text-stone-500">
-              Dữ liệu được lưu trữ trên GitHub repo HaanMC/AI-For-Good
+              Dữ liệu học tập được lưu trữ an toàn trên hệ thống
             </p>
           </div>
         </div>

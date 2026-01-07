@@ -1,6 +1,7 @@
 /**
  * Auth Context
  * Quản lý trạng thái xác thực người dùng
+ * Người dùng chỉ cần username/password, không cần cấu hình gì
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -10,11 +11,7 @@ import {
   signupUser,
   loginUser,
   logoutUser as logoutUserService,
-  updateUserProfile,
-  isGitHubConfigured,
-  setGitHubToken,
-  verifyGitHubToken,
-  initializeUsersFolder
+  updateUserProfile
 } from '../../services/githubStorageService';
 
 interface AuthContextValue extends AuthState {
@@ -22,8 +19,6 @@ interface AuthContextValue extends AuthState {
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (profile: UserProfile) => Promise<boolean>;
-  isConfigured: boolean;
-  configureToken: (token: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -36,16 +31,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isConfigured, setIsConfigured] = useState(false);
 
   // Initialize auth state from localStorage
   useEffect(() => {
-    const initAuth = async () => {
+    const initAuth = () => {
       setIsLoading(true);
       try {
-        const configured = isGitHubConfigured();
-        setIsConfigured(configured);
-
         const storedUser = getStoredAuthUser();
         if (storedUser) {
           setUser(storedUser);
@@ -60,41 +51,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  // Configure GitHub token
-  const configureToken = useCallback(async (token: string): Promise<boolean> => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Verify token is valid
-      const isValid = await verifyGitHubToken(token);
-      if (!isValid) {
-        setError('Token không hợp lệ. Vui lòng kiểm tra lại.');
-        return false;
-      }
-
-      // Save token
-      setGitHubToken(token);
-      setIsConfigured(true);
-
-      // Initialize users folder
-      await initializeUsersFolder();
-
-      return true;
-    } catch (err) {
-      setError('Không thể kết nối đến GitHub');
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   // Login
   const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    if (!isGitHubConfigured()) {
-      return { success: false, error: 'Chưa cấu hình GitHub Token' };
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -119,10 +77,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Signup
   const signup = useCallback(async (data: SignupData): Promise<{ success: boolean; error?: string }> => {
-    if (!isGitHubConfigured()) {
-      return { success: false, error: 'Chưa cấu hình GitHub Token' };
-    }
-
     setIsLoading(true);
     setError(null);
 
@@ -177,9 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     signup,
     logout,
-    updateProfile,
-    isConfigured,
-    configureToken
+    updateProfile
   };
 
   return (
