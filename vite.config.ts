@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     // RẤT QUAN TRỌNG: trùng chính xác tên repo
-    base: '/AI-For-Good-V0/',
+    base: '/AI-For-Good/',
 
     server: {
       port: 3000,
