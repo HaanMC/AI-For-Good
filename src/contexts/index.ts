@@ -6,3 +6,4 @@
 export { ThemeProvider, useThemeContext, default as ThemeContext } from './ThemeContext';
 export { ProfileProvider, useProfileContext, default as ProfileContext } from './ProfileContext';
 export { AppProvider, useAppContext, default as AppContext } from './AppContext';
+export { AuthProvider, useAuthContext, default as AuthContext } from './AuthContext';

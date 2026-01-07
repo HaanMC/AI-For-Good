@@ -242,6 +242,13 @@ Có thể ra ngoài hít thở không khí trong lành hoặc làm việc nhà g
 }
 
 /**
+ * Tạo phản hồi hỗ trợ dựa trên category
+ */
+export function createSupportiveResponse(category: SafetyCategory): string {
+  return SUPPORTIVE_RESPONSES[category] || '';
+}
+
+/**
  * Danh sách đường dây nóng hỗ trợ
  */
 export const HOTLINES = {

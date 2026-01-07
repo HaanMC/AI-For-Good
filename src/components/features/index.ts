@@ -10,3 +10,9 @@ export { default as ProfileView } from './ProfileView';
 export { default as WelcomeScreen } from './WelcomeScreen';
 export { default as OnboardingModal } from './OnboardingModal';
 export { default as ChatHistoryModal } from './ChatHistoryModal';
+
+// Auth components
+export { default as AuthScreen } from './AuthScreen';
+export { default as LoginForm } from './LoginForm';
+export { default as SignupForm } from './SignupForm';
+export { default as GitHubConfigForm } from './GitHubConfigForm';
