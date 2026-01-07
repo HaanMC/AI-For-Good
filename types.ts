@@ -382,3 +382,45 @@ export const HEALTH_TIPS = [
   "Đừng quên dành thời gian chơi và gặp gỡ bạn bè ngoài đời thực!",
   "Nếu cảm thấy mệt hoặc căng thẳng, hãy dừng lại và thư giãn một chút."
 ];
+
+// ============================================
+// AUTHENTICATION - ĐĂNG NHẬP / ĐĂNG KÝ
+// Lưu trữ thông tin người dùng trên GitHub
+// ============================================
+
+export interface AuthUser {
+  id: string;
+  username: string;
+  email: string;
+  displayName: string;
+  createdAt: number;
+  lastLoginAt: number;
+  profile?: UserProfile;
+}
+
+export interface AuthCredentials {
+  username: string;
+  password: string;
+}
+
+export interface SignupData {
+  username: string;
+  email: string;
+  password: string;
+  displayName: string;
+}
+
+export interface GitHubConfig {
+  owner: string;        // GitHub username/org
+  repo: string;         // Repository name
+  branch: string;       // Branch name (default: main)
+  userDataPath: string; // Path to store user data (e.g., 'users-data')
+  token: string;        // GitHub Personal Access Token
+}
+
+export interface AuthState {
+  user: AuthUser | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}

@@ -80,6 +80,7 @@ import {
   GRADE_10_EXAM_TOPICS,
   Grade10Character
 } from './grade10-literature-knowledge';
+import { useAuthContext } from './src/contexts';
 
 // --- PDF Generation Helper ---
 const generateExamPDF = (examHistory: ExamHistory) => {
@@ -1340,6 +1341,9 @@ const CameraCapture: React.FC<CameraCaptureProps> = ({ onCapture, onClose, isPro
 // --- Main App Component ---
 
 const App: React.FC = () => {
+  // Auth Context
+  const { logout: handleLogout, user: authUser } = useAuthContext();
+
   // Theme State
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -2829,6 +2833,14 @@ const App: React.FC = () => {
                      )}
                    </div>
                  )}
+                 {/* Logout Button */}
+                 <button
+                   onClick={handleLogout}
+                   className="mt-3 w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                 >
+                   <LogOut className="w-3.5 h-3.5" />
+                   Đăng xuất
+                 </button>
                </>
             )}
           </div>
