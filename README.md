@@ -66,8 +66,8 @@
 
 ### Bước 1: Clone dự án
 ```bash
-git clone <repository-url>
-cd AI-For-Good-V0
+git clone https://github.com/HaanMC/AI-For-Good.git
+cd AI-For-Good
 ```
 
 ### Bước 2: Cài đặt dependencies
@@ -78,8 +78,10 @@ npm install
 ### Bước 3: Cấu hình API Key
 Tạo file `.env` trong thư mục gốc:
 ```env
-GEMINI_API_KEY=your_google_gemini_api_key
+API_KEY=your_google_gemini_api_key
 ```
+
+Lấy API key tại: https://aistudio.google.com/apikey
 
 ### Bước 4: Chạy development server
 ```bash
