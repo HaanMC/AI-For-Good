@@ -4,16 +4,16 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { AuthUser, AuthState, SignupData, GitHubConfig, UserProfile } from '../../types';
+import { AuthUser, AuthState, SignupData, UserProfile } from '../../types';
 import {
-  getGitHubConfig,
-  saveGitHubConfig,
   getStoredAuthUser,
   signupUser,
   loginUser,
   logoutUser as logoutUserService,
   updateUserProfile,
-  verifyGitHubConfig,
+  isGitHubConfigured,
+  setGitHubToken,
+  verifyGitHubToken,
   initializeUsersFolder
 } from '../../services/githubStorageService';
 
@@ -22,9 +22,8 @@ interface AuthContextValue extends AuthState {
   signup: (data: SignupData) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   updateProfile: (profile: UserProfile) => Promise<boolean>;
-  githubConfig: GitHubConfig | null;
-  setGitHubConfig: (config: GitHubConfig) => Promise<boolean>;
   isConfigured: boolean;
+  configureToken: (token: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -37,20 +36,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [githubConfig, setGithubConfigState] = useState<GitHubConfig | null>(null);
+  const [isConfigured, setIsConfigured] = useState(false);
 
   // Initialize auth state from localStorage
   useEffect(() => {
     const initAuth = async () => {
       setIsLoading(true);
       try {
-        const storedConfig = getGitHubConfig();
+        const configured = isGitHubConfigured();
+        setIsConfigured(configured);
+
         const storedUser = getStoredAuthUser();
-
-        if (storedConfig) {
-          setGithubConfigState(storedConfig);
-        }
-
         if (storedUser) {
           setUser(storedUser);
         }
@@ -64,25 +60,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
   }, []);
 
-  // Set GitHub configuration
-  const setGitHubConfig = useCallback(async (config: GitHubConfig): Promise<boolean> => {
+  // Configure GitHub token
+  const configureToken = useCallback(async (token: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
 
     try {
-      // Verify config is valid
-      const isValid = await verifyGitHubConfig(config);
+      // Verify token is valid
+      const isValid = await verifyGitHubToken(token);
       if (!isValid) {
-        setError('Cấu hình GitHub không hợp lệ. Vui lòng kiểm tra lại.');
+        setError('Token không hợp lệ. Vui lòng kiểm tra lại.');
         return false;
       }
 
-      // Initialize users folder
-      await initializeUsersFolder(config);
+      // Save token
+      setGitHubToken(token);
+      setIsConfigured(true);
 
-      // Save config
-      saveGitHubConfig(config);
-      setGithubConfigState(config);
+      // Initialize users folder
+      await initializeUsersFolder();
 
       return true;
     } catch (err) {
@@ -95,15 +91,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Login
   const login = useCallback(async (username: string, password: string): Promise<{ success: boolean; error?: string }> => {
-    if (!githubConfig) {
-      return { success: false, error: 'Chưa cấu hình GitHub' };
+    if (!isGitHubConfigured()) {
+      return { success: false, error: 'Chưa cấu hình GitHub Token' };
     }
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await loginUser(username, password, githubConfig);
+      const result = await loginUser(username, password);
 
       if (result.success && result.user) {
         setUser(result.user);
@@ -119,19 +115,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [githubConfig]);
+  }, []);
 
   // Signup
   const signup = useCallback(async (data: SignupData): Promise<{ success: boolean; error?: string }> => {
-    if (!githubConfig) {
-      return { success: false, error: 'Chưa cấu hình GitHub' };
+    if (!isGitHubConfigured()) {
+      return { success: false, error: 'Chưa cấu hình GitHub Token' };
     }
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await signupUser(data, githubConfig);
+      const result = await signupUser(data);
 
       if (result.success && result.user) {
         setUser(result.user);
@@ -147,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [githubConfig]);
+  }, []);
 
   // Logout
   const logout = useCallback(() => {
@@ -158,12 +154,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Update profile
   const updateProfile = useCallback(async (profile: UserProfile): Promise<boolean> => {
-    if (!githubConfig || !user) {
+    if (!user) {
       return false;
     }
 
     try {
-      const success = await updateUserProfile(user.username, profile, githubConfig);
+      const success = await updateUserProfile(user.username, profile);
       if (success) {
         setUser(prev => prev ? { ...prev, profile } : null);
       }
@@ -171,7 +167,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } catch {
       return false;
     }
-  }, [githubConfig, user]);
+  }, [user]);
 
   const value: AuthContextValue = {
     user,
@@ -182,9 +178,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     logout,
     updateProfile,
-    githubConfig,
-    setGitHubConfig,
-    isConfigured: !!githubConfig
+    isConfigured,
+    configureToken
   };
 
   return (

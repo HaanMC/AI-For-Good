@@ -1,19 +1,21 @@
 /**
  * GitHub Storage Service
- * Lưu trữ và quản lý thông tin người dùng trực tiếp trên GitHub
+ * Lưu trữ và quản lý thông tin người dùng trực tiếp trên GitHub repo hiện tại
  */
 
 import { AuthUser, SignupData, GitHubConfig, UserProfile } from '../types';
 
-// Default GitHub configuration
-const DEFAULT_GITHUB_CONFIG: Partial<GitHubConfig> = {
+// Default GitHub configuration - sử dụng repo hiện tại
+const APP_GITHUB_CONFIG: GitHubConfig = {
+  owner: 'HaanMC',
+  repo: 'AI-For-Good',
   branch: 'main',
-  userDataPath: 'users-data'
+  userDataPath: 'users-data',
+  token: (typeof process !== 'undefined' && process.env?.GITHUB_TOKEN) || ''
 };
 
-// Storage key for GitHub config
-const GITHUB_CONFIG_KEY = 'vanhoc10_github_config';
 const AUTH_USER_KEY = 'vanhoc10_auth_user';
+const GITHUB_TOKEN_KEY = 'vanhoc10_github_token';
 
 // Simple hash function for password (NOT secure - for demo purposes only)
 function simpleHash(str: string): string {
@@ -26,22 +28,25 @@ function simpleHash(str: string): string {
   return Math.abs(hash).toString(16).padStart(8, '0');
 }
 
-// Get GitHub config from localStorage
-export function getGitHubConfig(): GitHubConfig | null {
-  try {
-    const stored = localStorage.getItem(GITHUB_CONFIG_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-    return null;
-  } catch {
-    return null;
+// Get the app's GitHub config
+export function getGitHubConfig(): GitHubConfig {
+  // Check localStorage for token first
+  const storedToken = localStorage.getItem(GITHUB_TOKEN_KEY);
+  if (storedToken) {
+    return { ...APP_GITHUB_CONFIG, token: storedToken };
   }
+  return APP_GITHUB_CONFIG;
 }
 
-// Save GitHub config to localStorage
-export function saveGitHubConfig(config: GitHubConfig): void {
-  localStorage.setItem(GITHUB_CONFIG_KEY, JSON.stringify(config));
+// Set GitHub token (saved to localStorage)
+export function setGitHubToken(token: string): void {
+  localStorage.setItem(GITHUB_TOKEN_KEY, token);
+}
+
+// Check if GitHub is configured (has token)
+export function isGitHubConfigured(): boolean {
+  const config = getGitHubConfig();
+  return !!config.token;
 }
 
 // Get stored auth user from localStorage
@@ -156,10 +161,8 @@ function getUserFilePath(username: string, config: GitHubConfig): string {
 }
 
 // Check if username exists
-export async function checkUsernameExists(
-  username: string,
-  config: GitHubConfig
-): Promise<boolean> {
+export async function checkUsernameExists(username: string): Promise<boolean> {
+  const config = getGitHubConfig();
   const filePath = getUserFilePath(username, config);
   const result = await getFileContent(filePath, config);
   return result !== null;
@@ -167,12 +170,17 @@ export async function checkUsernameExists(
 
 // Sign up new user
 export async function signupUser(
-  data: SignupData,
-  config: GitHubConfig
+  data: SignupData
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+  const config = getGitHubConfig();
+
+  if (!config.token) {
+    return { success: false, error: 'Chưa cấu hình GitHub Token' };
+  }
+
   try {
     // Check if username already exists
-    const exists = await checkUsernameExists(data.username, config);
+    const exists = await checkUsernameExists(data.username);
     if (exists) {
       return { success: false, error: 'Tên đăng nhập đã tồn tại' };
     }
@@ -219,9 +227,14 @@ export async function signupUser(
 // Login user
 export async function loginUser(
   username: string,
-  password: string,
-  config: GitHubConfig
+  password: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+  const config = getGitHubConfig();
+
+  if (!config.token) {
+    return { success: false, error: 'Chưa cấu hình GitHub Token' };
+  }
+
   try {
     const filePath = getUserFilePath(username, config);
     const result = await getFileContent(filePath, config);
@@ -276,9 +289,14 @@ export async function loginUser(
 // Update user profile on GitHub
 export async function updateUserProfile(
   username: string,
-  profile: UserProfile,
-  config: GitHubConfig
+  profile: UserProfile
 ): Promise<boolean> {
+  const config = getGitHubConfig();
+
+  if (!config.token) {
+    return false;
+  }
+
   try {
     const filePath = getUserFilePath(username, config);
     const result = await getFileContent(filePath, config);
@@ -319,9 +337,10 @@ export function logoutUser(): void {
   clearAuthUserLocally();
 }
 
-// Verify GitHub config is valid
-export async function verifyGitHubConfig(config: GitHubConfig): Promise<boolean> {
+// Verify GitHub token is valid
+export async function verifyGitHubToken(token: string): Promise<boolean> {
   try {
+    const config = { ...APP_GITHUB_CONFIG, token };
     const response = await githubAPI(
       `/repos/${config.owner}/${config.repo}`,
       config
@@ -333,7 +352,13 @@ export async function verifyGitHubConfig(config: GitHubConfig): Promise<boolean>
 }
 
 // Initialize users-data folder if not exists
-export async function initializeUsersFolder(config: GitHubConfig): Promise<boolean> {
+export async function initializeUsersFolder(): Promise<boolean> {
+  const config = getGitHubConfig();
+
+  if (!config.token) {
+    return false;
+  }
+
   try {
     // Check if folder exists by trying to get its contents
     const response = await githubAPI(
