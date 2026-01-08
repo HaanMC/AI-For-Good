@@ -43,7 +43,7 @@ const ChatView: React.FC<ChatViewProps> = ({
     const safetyCheck = checkContentSafety(inputMessage);
     if (safetyCheck.riskLevel !== 'none' && safetyCheck.riskLevel !== 'low') {
       // Show supportive response for concerning content
-      const supportiveMsg = createSupportiveResponse(safetyCheck);
+      const supportiveMsg = createSupportiveResponse(safetyCheck.category || 'none');
       const botMessage: Message = {
         id: `bot_${Date.now()}`,
         text: supportiveMsg,
@@ -104,8 +104,9 @@ const ChatView: React.FC<ChatViewProps> = ({
       const response = await sendMessageToGemini(
         fullMessage,
         messages.filter(m => !m.isLoading),
-        weaknesses,
-        isFastMode ? false : true // Use extended thinking for deep mode
+        userMessage.files || [],
+        undefined, // userProfile
+        isFastMode // Use fast model when in fast mode
       );
 
       // Replace loading with actual response

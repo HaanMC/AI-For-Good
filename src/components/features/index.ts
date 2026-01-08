@@ -15,4 +15,3 @@ export { default as ChatHistoryModal } from './ChatHistoryModal';
 export { default as AuthScreen } from './AuthScreen';
 export { default as LoginForm } from './LoginForm';
 export { default as SignupForm } from './SignupForm';
-export { default as GitHubConfigForm } from './GitHubConfigForm';

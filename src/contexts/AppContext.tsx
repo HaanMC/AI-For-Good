@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
-import { AppMode, Message, ChatSession } from '../../types';
+import { AppMode, Message, ChatSession, Sender } from '../../types';
 import { useChatHistory } from '../hooks/useChatHistory';
 
 interface AppContextValue {
@@ -49,7 +49,7 @@ interface AppProviderProps {
 const INITIAL_MESSAGE: Message = {
   id: 'initial',
   text: "Chào em! Thầy là Trợ lý Văn học AI của em. Thầy có thể giúp em ôn tập, phân tích tác phẩm, luyện viết hoặc tạo đề thi thử. Em muốn bắt đầu từ đâu?",
-  sender: 'bot' as const,
+  sender: Sender.Bot,
   timestamp: Date.now()
 };
 
