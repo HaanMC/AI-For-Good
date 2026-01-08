@@ -1,21 +1,21 @@
 /**
  * GitHub Storage Service
  * Lưu trữ và quản lý thông tin người dùng trực tiếp trên GitHub repo hiện tại
- * Sử dụng token của app (từ env variable), người dùng không cần cung cấp token
  */
 
-import { AuthUser, SignupData, GitHubConfig, UserProfile, ChatSession, ExamHistory } from '../types';
+import { AuthUser, SignupData, GitHubConfig, UserProfile } from '../types';
 
-// App's GitHub configuration - token từ environment variable
+// Default GitHub configuration - sử dụng repo hiện tại
 const APP_GITHUB_CONFIG: GitHubConfig = {
   owner: 'HaanMC',
   repo: 'AI-For-Good',
   branch: 'main',
   userDataPath: 'users-data',
-  token: process.env.GITHUB_TOKEN || ''
+  token: (typeof process !== 'undefined' && process.env?.GITHUB_TOKEN) || ''
 };
 
 const AUTH_USER_KEY = 'vanhoc10_auth_user';
+const GITHUB_TOKEN_KEY = 'vanhoc10_github_token';
 
 // Simple hash function for password (NOT secure - for demo purposes only)
 function simpleHash(str: string): string {
@@ -30,12 +30,23 @@ function simpleHash(str: string): string {
 
 // Get the app's GitHub config
 export function getGitHubConfig(): GitHubConfig {
+  // Check localStorage for token first
+  const storedToken = localStorage.getItem(GITHUB_TOKEN_KEY);
+  if (storedToken) {
+    return { ...APP_GITHUB_CONFIG, token: storedToken };
+  }
   return APP_GITHUB_CONFIG;
 }
 
-// Check if GitHub is configured (has token from env)
+// Set GitHub token (saved to localStorage)
+export function setGitHubToken(token: string): void {
+  localStorage.setItem(GITHUB_TOKEN_KEY, token);
+}
+
+// Check if GitHub is configured (has token)
 export function isGitHubConfigured(): boolean {
-  return !!APP_GITHUB_CONFIG.token;
+  const config = getGitHubConfig();
+  return !!config.token;
 }
 
 // Get stored auth user from localStorage
@@ -64,11 +75,12 @@ export function clearAuthUserLocally(): void {
 // GitHub API helper
 async function githubAPI(
   endpoint: string,
+  config: GitHubConfig,
   options: RequestInit = {}
 ): Promise<Response> {
   const url = `https://api.github.com${endpoint}`;
   const headers: HeadersInit = {
-    'Authorization': `Bearer ${APP_GITHUB_CONFIG.token}`,
+    'Authorization': `Bearer ${config.token}`,
     'Accept': 'application/vnd.github.v3+json',
     'Content-Type': 'application/json',
     ...options.headers
@@ -81,11 +93,14 @@ async function githubAPI(
 }
 
 // Get file content from GitHub
-async function getFileContent(path: string): Promise<{ content: string; sha: string } | null> {
+async function getFileContent(
+  path: string,
+  config: GitHubConfig
+): Promise<{ content: string; sha: string } | null> {
   try {
-    const { owner, repo, branch } = APP_GITHUB_CONFIG;
     const response = await githubAPI(
-      `/repos/${owner}/${repo}/contents/${path}?ref=${branch}`
+      `/repos/${config.owner}/${config.repo}/contents/${path}?ref=${config.branch}`,
+      config
     );
 
     if (response.status === 404) {
@@ -110,14 +125,14 @@ async function saveFileContent(
   path: string,
   content: string,
   message: string,
+  config: GitHubConfig,
   sha?: string
 ): Promise<boolean> {
   try {
-    const { owner, repo, branch } = APP_GITHUB_CONFIG;
     const body: Record<string, string> = {
       message,
       content: btoa(unescape(encodeURIComponent(content))),
-      branch
+      branch: config.branch
     };
 
     if (sha) {
@@ -125,7 +140,8 @@ async function saveFileContent(
     }
 
     const response = await githubAPI(
-      `/repos/${owner}/${repo}/contents/${path}`,
+      `/repos/${config.owner}/${config.repo}/contents/${path}`,
+      config,
       {
         method: 'PUT',
         body: JSON.stringify(body)
@@ -140,28 +156,15 @@ async function saveFileContent(
 }
 
 // Generate user file path
-function getUserFilePath(username: string): string {
-  return `${APP_GITHUB_CONFIG.userDataPath}/${username.toLowerCase()}.json`;
-}
-
-// User data structure stored on GitHub
-interface StoredUserData {
-  id: string;
-  username: string;
-  email: string;
-  displayName: string;
-  passwordHash: string;
-  createdAt: number;
-  lastLoginAt: number;
-  profile?: UserProfile;
-  chatHistory?: ChatSession[];
-  examHistory?: ExamHistory[];
+function getUserFilePath(username: string, config: GitHubConfig): string {
+  return `${config.userDataPath}/${username.toLowerCase()}.json`;
 }
 
 // Check if username exists
 export async function checkUsernameExists(username: string): Promise<boolean> {
-  const filePath = getUserFilePath(username);
-  const result = await getFileContent(filePath);
+  const config = getGitHubConfig();
+  const filePath = getUserFilePath(username, config);
+  const result = await getFileContent(filePath, config);
   return result !== null;
 }
 
@@ -169,8 +172,10 @@ export async function checkUsernameExists(username: string): Promise<boolean> {
 export async function signupUser(
   data: SignupData
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  if (!APP_GITHUB_CONFIG.token) {
-    return { success: false, error: 'Hệ thống chưa được cấu hình. Vui lòng liên hệ quản trị viên.' };
+  const config = getGitHubConfig();
+
+  if (!config.token) {
+    return { success: false, error: 'Chưa cấu hình GitHub Token' };
   }
 
   try {
@@ -192,22 +197,21 @@ export async function signupUser(
     };
 
     // Store user data with hashed password
-    const userData: StoredUserData = {
+    const userData = {
       ...user,
-      passwordHash: simpleHash(data.password),
-      chatHistory: [],
-      examHistory: []
+      passwordHash: simpleHash(data.password)
     };
 
-    const filePath = getUserFilePath(data.username);
+    const filePath = getUserFilePath(data.username, config);
     const saved = await saveFileContent(
       filePath,
       JSON.stringify(userData, null, 2),
-      `Create user: ${data.username}`
+      `Create user: ${data.username}`,
+      config
     );
 
     if (!saved) {
-      return { success: false, error: 'Không thể tạo tài khoản. Vui lòng thử lại.' };
+      return { success: false, error: 'Không thể lưu thông tin người dùng' };
     }
 
     // Save user locally
@@ -225,19 +229,21 @@ export async function loginUser(
   username: string,
   password: string
 ): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
-  if (!APP_GITHUB_CONFIG.token) {
-    return { success: false, error: 'Hệ thống chưa được cấu hình. Vui lòng liên hệ quản trị viên.' };
+  const config = getGitHubConfig();
+
+  if (!config.token) {
+    return { success: false, error: 'Chưa cấu hình GitHub Token' };
   }
 
   try {
-    const filePath = getUserFilePath(username);
-    const result = await getFileContent(filePath);
+    const filePath = getUserFilePath(username, config);
+    const result = await getFileContent(filePath, config);
 
     if (!result) {
       return { success: false, error: 'Tên đăng nhập không tồn tại' };
     }
 
-    const userData: StoredUserData = JSON.parse(result.content);
+    const userData = JSON.parse(result.content);
 
     // Check password
     if (userData.passwordHash !== simpleHash(password)) {
@@ -257,7 +263,7 @@ export async function loginUser(
     };
 
     // Update user data on GitHub
-    const updatedData: StoredUserData = {
+    const updatedData = {
       ...userData,
       lastLoginAt: now
     };
@@ -265,7 +271,8 @@ export async function loginUser(
     await saveFileContent(
       filePath,
       JSON.stringify(updatedData, null, 2),
-      `Login: ${username}`,
+      `Update login time: ${username}`,
+      config,
       result.sha
     );
 
@@ -284,25 +291,28 @@ export async function updateUserProfile(
   username: string,
   profile: UserProfile
 ): Promise<boolean> {
-  if (!APP_GITHUB_CONFIG.token) {
+  const config = getGitHubConfig();
+
+  if (!config.token) {
     return false;
   }
 
   try {
-    const filePath = getUserFilePath(username);
-    const result = await getFileContent(filePath);
+    const filePath = getUserFilePath(username, config);
+    const result = await getFileContent(filePath, config);
 
     if (!result) {
       return false;
     }
 
-    const userData: StoredUserData = JSON.parse(result.content);
+    const userData = JSON.parse(result.content);
     userData.profile = profile;
 
     const saved = await saveFileContent(
       filePath,
       JSON.stringify(userData, null, 2),
       `Update profile: ${username}`,
+      config,
       result.sha
     );
 
@@ -322,92 +332,53 @@ export async function updateUserProfile(
   }
 }
 
-// Save user's chat history to GitHub
-export async function saveUserChatHistory(
-  username: string,
-  chatHistory: ChatSession[]
-): Promise<boolean> {
-  if (!APP_GITHUB_CONFIG.token) {
-    return false;
-  }
-
-  try {
-    const filePath = getUserFilePath(username);
-    const result = await getFileContent(filePath);
-
-    if (!result) {
-      return false;
-    }
-
-    const userData: StoredUserData = JSON.parse(result.content);
-    userData.chatHistory = chatHistory;
-
-    return await saveFileContent(
-      filePath,
-      JSON.stringify(userData, null, 2),
-      `Update chat history: ${username}`,
-      result.sha
-    );
-  } catch (error) {
-    console.error('Save chat history error:', error);
-    return false;
-  }
-}
-
-// Save user's exam history to GitHub
-export async function saveUserExamHistory(
-  username: string,
-  examHistory: ExamHistory[]
-): Promise<boolean> {
-  if (!APP_GITHUB_CONFIG.token) {
-    return false;
-  }
-
-  try {
-    const filePath = getUserFilePath(username);
-    const result = await getFileContent(filePath);
-
-    if (!result) {
-      return false;
-    }
-
-    const userData: StoredUserData = JSON.parse(result.content);
-    userData.examHistory = examHistory;
-
-    return await saveFileContent(
-      filePath,
-      JSON.stringify(userData, null, 2),
-      `Update exam history: ${username}`,
-      result.sha
-    );
-  } catch (error) {
-    console.error('Save exam history error:', error);
-    return false;
-  }
-}
-
-// Get user's full data from GitHub
-export async function getUserFullData(username: string): Promise<StoredUserData | null> {
-  if (!APP_GITHUB_CONFIG.token) {
-    return null;
-  }
-
-  try {
-    const filePath = getUserFilePath(username);
-    const result = await getFileContent(filePath);
-
-    if (!result) {
-      return null;
-    }
-
-    return JSON.parse(result.content);
-  } catch (error) {
-    console.error('Get user data error:', error);
-    return null;
-  }
-}
-
 // Logout user
 export function logoutUser(): void {
   clearAuthUserLocally();
+}
+
+// Verify GitHub token is valid
+export async function verifyGitHubToken(token: string): Promise<boolean> {
+  try {
+    const config = { ...APP_GITHUB_CONFIG, token };
+    const response = await githubAPI(
+      `/repos/${config.owner}/${config.repo}`,
+      config
+    );
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Initialize users-data folder if not exists
+export async function initializeUsersFolder(): Promise<boolean> {
+  const config = getGitHubConfig();
+
+  if (!config.token) {
+    return false;
+  }
+
+  try {
+    // Check if folder exists by trying to get its contents
+    const response = await githubAPI(
+      `/repos/${config.owner}/${config.repo}/contents/${config.userDataPath}?ref=${config.branch}`,
+      config
+    );
+
+    if (response.status === 404) {
+      // Create a .gitkeep file to initialize the folder
+      const saved = await saveFileContent(
+        `${config.userDataPath}/.gitkeep`,
+        '# Users data folder\nThis folder stores user account data.',
+        `Initialize ${config.userDataPath} folder`,
+        config
+      );
+      return saved;
+    }
+
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
