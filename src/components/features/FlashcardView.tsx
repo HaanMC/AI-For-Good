@@ -123,8 +123,7 @@ const FlashcardView: React.FC<FlashcardViewProps> = ({ weaknesses = [] }) => {
       const numCards = Math.min(Math.max(parseInt(count) || 10, 1), 50);
       const result = await generateFlashcards(
         topic,
-        numCards,
-        difficulty === 'mixed' ? undefined : difficulty
+        numCards
       );
       setCards(result);
       setCurrentIndex(0);

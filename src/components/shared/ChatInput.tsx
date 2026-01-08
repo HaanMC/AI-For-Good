@@ -40,7 +40,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
 
   // Handle file input change
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(e.target.files || []);
+    const selectedFiles = e.target.files ? Array.from<File>(e.target.files) : [];
     if (selectedFiles.length === 0) return;
 
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB

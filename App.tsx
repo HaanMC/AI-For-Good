@@ -55,8 +55,7 @@ import {
   Camera,
   SwitchCamera,
   ImageIcon,
-  Trash2,
-  Clock
+  Trash2
 } from 'lucide-react';
 import { AppMode, Message, Sender, UploadedFile, ExamStructure, GradingResult, DictionaryEntry, WritingFeedback, CharacterProfile, UserProfile, ExamLevel, ExamType, ExamSessionMode, EXAM_TYPE_CONFIGS, QuestionFeedback, ExamHistory, Flashcard, MindmapNode, StudyPlan, StudyPlanOptions, DEFAULT_STUDY_PLAN_OPTIONS, ChatSession } from './types';
 import {
@@ -2027,10 +2026,10 @@ const App: React.FC = () => {
     if (!fileList || fileList.length === 0) return;
 
     const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB limit
-    const oversizedFiles = Array.from(fileList).filter(file => file.size > MAX_FILE_SIZE);
+    const oversizedFiles = Array.from<File>(fileList).filter(file => file.size > MAX_FILE_SIZE);
 
     if (oversizedFiles.length > 0) {
-      const fileNames = oversizedFiles.map(f => f.name).join(', ');
+      const fileNames = oversizedFiles.map((f: File) => f.name).join(', ');
       alert(`Tệp quá lớn (tối đa 10MB): ${fileNames}`);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';

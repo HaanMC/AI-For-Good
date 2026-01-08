@@ -3,6 +3,8 @@
  * Re-exports from root types.ts and adds component-specific types
  */
 
+import type React from 'react';
+
 // Re-export all types from root
 export * from '../../types';
 

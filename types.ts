@@ -17,6 +17,8 @@ export interface UploadedFile {
   name: string;
   mimeType: string;
   data: string; // Base64 string
+  type?: string; // File type for display
+  uploadedAt?: number; // Timestamp when uploaded
 }
 
 export enum AppMode {
@@ -49,11 +51,14 @@ export interface ExamHistory {
 
 export interface UserProfile {
   name: string;
+  grade?: string; // e.g., 'Lớp 10'
+  school?: string; // e.g., 'THPT Chu Văn An'
   weaknesses: string[]; // e.g., 'Phân tích thơ', 'Nghị luận xã hội', 'Mở bài'
   goals: string;      // e.g., 'Thi học sinh giỏi', 'Đạt 8.0+'
   examHistory?: ExamHistory[]; // Lịch sử làm bài
   strengths?: string[]; // Điểm mạnh
   knowledgeFiles?: UploadedFile[]; // User's uploaded knowledge base
+  createdAt?: number; // Timestamp when profile was created
   preferences?: {
     fontSize?: 'small' | 'medium' | 'large';
     autoSave?: boolean;
